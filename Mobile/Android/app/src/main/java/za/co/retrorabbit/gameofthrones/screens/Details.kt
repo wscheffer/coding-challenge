@@ -43,15 +43,19 @@ import retrofit2.Response
 import za.co.retrorabbit.gameofthrones.composables.IconTile
 import za.co.retrorabbit.gameofthrones.composables.MultilineLabel
 import za.co.retrorabbit.gameofthrones.extensions.getId
+import za.co.retrorabbit.gameofthrones.models.CharacterViewModel
+import za.co.retrorabbit.gameofthrones.models.CharactersViewModel
 import za.co.retrorabbit.gameofthrones.models.House
 import za.co.retrorabbit.gameofthrones.models.Person
 import za.co.retrorabbit.gameofthrones.router.route
 import za.co.retrorabbit.gameofthrones.services.RetrofitClient
+import za.co.retrorabbit.gameofthrones.services.getData
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HouseDetailScaffold(housesData: House?, navController: NavHostController) {
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
+    val scrollBehavior =
+        TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     Scaffold(
         modifier = Modifier
             .nestedScroll(scrollBehavior.nestedScrollConnection)
@@ -73,7 +77,14 @@ fun HouseDetailScaffold(housesData: House?, navController: NavHostController) {
                     containerColor = MaterialTheme.colorScheme.primary
                 ),
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = {
+                        currentLordData.clear()
+                        founderData.clear()
+                        heirData.clear()
+                        membersData.clear()
+                        navController.popBackStack()
+
+                    }) {
                         Icon(
                             imageVector = Icons.Filled.ArrowBack,
                             contentDescription = "Localized description"
@@ -88,55 +99,6 @@ fun HouseDetailScaffold(housesData: House?, navController: NavHostController) {
     }
 }
 
-val currentLordData = CharacterViewModel()
-val founderData = CharacterViewModel()
-val heirData = CharacterViewModel()
-val membersData = CharactersViewModel()
-
-private fun getCharacter(id: Int?) {
-
-    val call = id?.let { RetrofitClient.instance.getGameOfThronesService().getCharacter(it) }
-    call?.enqueue(object : Callback<Person> {
-        override fun onResponse(call: Call<Person>, response: Response<Person>) {
-            val person: Person = response.body() ?: Person()
-
-            currentLordData.onDataChange(person)
-        }
-
-        override fun onFailure(call: Call<Person>, t: Throwable) {
-        }
-    })
-}
-
-private fun getFounder(id: Int?) {
-
-    val call = id?.let { RetrofitClient.instance.getGameOfThronesService().getCharacter(it) }
-    call?.enqueue(object : Callback<Person> {
-        override fun onResponse(call: Call<Person>, response: Response<Person>) {
-            val person: Person = response.body() ?: Person()
-
-            founderData.onDataChange(person)
-        }
-
-        override fun onFailure(call: Call<Person>, t: Throwable) {
-        }
-    })
-}
-
-private fun getHeir(id: Int?) {
-
-    val call = id?.let { RetrofitClient.instance.getGameOfThronesService().getCharacter(it) }
-    call?.enqueue(object : Callback<Person> {
-        override fun onResponse(call: Call<Person>, response: Response<Person>) {
-            val person: Person = response.body() ?: Person()
-
-            heirData.onDataChange(person)
-        }
-
-        override fun onFailure(call: Call<Person>, t: Throwable) {
-        }
-    })
-}
 
 private fun getMembers(ids: List<Int>) {
 
@@ -155,22 +117,60 @@ private fun getMembers(ids: List<Int>) {
     }
 }
 
+private val currentLordData = CharacterViewModel()
+private val founderData = CharacterViewModel()
+private val heirData = CharacterViewModel()
+private val membersData = CharactersViewModel()
+
 @Composable
 fun DetailsScreen(
     padding: PaddingValues,
     housesData: House?,
     navController: NavHostController
 ) {
+    val currentLord by currentLordData.data.observeAsState(Person())
+    val founder by founderData.data.observeAsState(Person())
+    val heir by heirData.data.observeAsState(Person())
+    val members by membersData.data.observeAsState(emptyList())
+
     housesData?.let {
-        getCharacter(housesData.currentLord.getId())
-        getFounder(housesData.founder.getId())
-        getHeir(housesData.heir.getId())
-        getMembers(housesData.swornMembers.filter { it.isNotBlank() }.mapNotNull { it.getId() })
+
+        if (currentLordData.data.value?.url.isNullOrBlank()
+            || currentLordData.data.value?.url?.getId() != housesData.currentLord.getId()
+        ) {
+            getData(
+                housesData.currentLord.getId()?.let { id ->
+                    RetrofitClient.instance.getGameOfThronesService()
+                        .getCharacter(id)
+                }, currentLordData, Person()
+            )
+        }
+
+        if (founderData.data.value?.url.isNullOrBlank()
+            || founderData.data.value?.url?.getId() != housesData.founder.getId()
+            ) {
+            getData(
+                housesData.founder.getId()?.let { id ->
+                    RetrofitClient.instance.getGameOfThronesService()
+                        .getCharacter(id)
+                }, founderData, Person()
+            )
+        }
+
+        if (heirData.data.value?.url.isNullOrBlank()
+            || heirData.data.value?.url?.getId() != housesData.heir.getId()
+            ) {
+            getData(
+                housesData.heir.getId()?.let { id ->
+                    RetrofitClient.instance.getGameOfThronesService()
+                        .getCharacter(id)
+                }, heirData, Person()
+            )
+        }
+        if (housesData.swornMembers.isEmpty()) {
+            getMembers(housesData.swornMembers.filter { it.isNotBlank() }.mapNotNull { it.getId() })
+        }
     }
-    val currentLord by currentLordData.person.observeAsState(Person())
-    val founder by founderData.person.observeAsState(Person())
-    val heir by heirData.person.observeAsState(Person())
-    val members by membersData.characters.observeAsState(emptyList())
 
     housesData?.let {
         LazyVerticalGrid(
@@ -258,7 +258,7 @@ fun DetailsScreen(
             item(span = { GridItemSpan(2) }) {
                 LazyHorizontalGrid(
                     modifier = Modifier
-                        .height(100.dp)
+                        .height(120.dp)
                         .fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),

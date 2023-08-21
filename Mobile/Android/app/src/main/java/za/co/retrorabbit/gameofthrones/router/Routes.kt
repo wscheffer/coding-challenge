@@ -29,7 +29,10 @@ fun Router() {
         ) { backStackEntry ->
             val arguments = requireNotNull(backStackEntry.arguments)
             val id = arguments.getInt("id")
-            HouseDetailScaffold(housesData.houses.value?.find{it.url.endsWith("/${id}")}, navController)
+            HouseDetailScaffold(
+                housesData.data.value?.find { it.url.endsWith("/${id}") },
+                navController
+            )
         }
         composable(
             routeCharacter(),
@@ -39,7 +42,9 @@ fun Router() {
         ) { backStackEntry ->
             val arguments = requireNotNull(backStackEntry.arguments)
             val id = arguments.getInt("id")
-            CharacterScaffold(id, navController)
+            CharacterScaffold(
+                id, navController
+            )
         }
         composable(
             routeBook(),
@@ -49,7 +54,9 @@ fun Router() {
         ) { backStackEntry ->
             val arguments = requireNotNull(backStackEntry.arguments)
             val id = arguments.getInt("id")
-            BookScaffold(id, navController)
+            BookScaffold(
+                id, navController
+            )
         }
     }
 }

@@ -38,9 +38,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
 import androidx.navigation.NavHostController
 import retrofit2.Call
 import retrofit2.Callback
@@ -50,75 +47,54 @@ import za.co.retrorabbit.gameofthrones.composables.LoadingAnimation
 import za.co.retrorabbit.gameofthrones.composables.MultilineLabel
 import za.co.retrorabbit.gameofthrones.extensions.getId
 import za.co.retrorabbit.gameofthrones.models.Book
+import za.co.retrorabbit.gameofthrones.models.BooksViewModel
+import za.co.retrorabbit.gameofthrones.models.CharacterViewModel
+import za.co.retrorabbit.gameofthrones.models.CharactersViewModel
 import za.co.retrorabbit.gameofthrones.models.Person
 import za.co.retrorabbit.gameofthrones.router.route
 import za.co.retrorabbit.gameofthrones.services.RetrofitClient
+import za.co.retrorabbit.gameofthrones.services.getData
 
-class CharacterViewModel : ViewModel() {
-    private val _person = MutableLiveData(Person())
-    var person: LiveData<Person> = _person
+private val personData = CharacterViewModel()
+private val spouseData = CharacterViewModel()
+private val motherData = CharacterViewModel()
+private val fatherData = CharacterViewModel()
+private val booksData = BooksViewModel()
+private val allegiancesData = CharactersViewModel()
 
-    fun onDataChange(data: Person) {
-        _person.value = data
+fun getCharacter(id: Int) {
+
+    if (personData.data.value?.url.isNullOrBlank()) {
+        val call = RetrofitClient.instance.getGameOfThronesService().getCharacter(id)
+        call?.enqueue(object : Callback<Person> {
+            override fun onResponse(call: Call<Person>, response: Response<Person>) {
+                val person: Person = response.body() ?: Person()
+
+                personData.onDataChange(person)
+
+                getBooks(person.books.mapNotNull { it.getId() })
+
+                if (!person.spouse.isNullOrBlank()) {
+                    person.spouse?.let { getSpouse(it.getId()) }
+                }
+
+                if (!person.mother.isNullOrBlank()) {
+                    person.mother?.let { getMother(it.getId()) }
+                }
+
+                if (!person.father.isNullOrBlank()) {
+                    person.father?.let { getFather(it.getId()) }
+                }
+
+                if (person.allegiances.isEmpty()) {
+                    getAllegiances(person.allegiances.mapNotNull { it.getId() })
+                }
+            }
+
+            override fun onFailure(call: Call<Person>, t: Throwable) {
+            }
+        })
     }
-}
-
-class BooksViewModel : ViewModel() {
-    private val _books = MutableLiveData(emptyList<Book>())
-    var books: LiveData<List<Book>> = _books
-
-    fun onDataAdd(data: Book) {
-        _books.value = (_books.value)?.plus(data)
-    }
-}
-
-class CharactersViewModel : ViewModel() {
-    private val _characters = MutableLiveData(emptyList<Person>())
-    var characters: LiveData<List<Person>> = _characters
-
-    fun onDataAdd(data: Person) {
-        _characters.value = (_characters.value)?.plus(data)
-    }
-}
-
-val personData = CharacterViewModel()
-val spouseData = CharacterViewModel()
-val motherData = CharacterViewModel()
-val fatherData = CharacterViewModel()
-val booksData = BooksViewModel()
-val allegiancesData = CharactersViewModel()
-
-private fun getCharacter(id: Int) {
-
-    val call = RetrofitClient.instance.getGameOfThronesService().getCharacter(id)
-    call?.enqueue(object : Callback<Person> {
-        override fun onResponse(call: Call<Person>, response: Response<Person>) {
-            val person: Person = response.body() ?: Person()
-
-            personData.onDataChange(person)
-
-            getBooks(person.books.mapNotNull { it.getId() })
-
-            if (!person.spouse.isNullOrBlank()) {
-                person.spouse?.let { getSpouse(it.getId()) }
-            }
-
-            if (!person.mother.isNullOrBlank()) {
-                person.mother?.let { getMother(it.getId()) }
-            }
-
-            if (!person.father.isNullOrBlank()) {
-                person.father?.let { getFather(it.getId()) }
-            }
-
-            if (person.allegiances.isEmpty()) {
-                getAllegiances(person.allegiances.mapNotNull { it.getId() })
-            }
-        }
-
-        override fun onFailure(call: Call<Person>, t: Throwable) {
-        }
-    })
 }
 
 private fun getMother(id: Int?) {
@@ -168,36 +144,28 @@ private fun getSpouse(id: Int?) {
 
 private fun getAllegiances(ids: List<Int>) {
 
-    ids.forEach { id ->
-        val call = RetrofitClient.instance.getGameOfThronesService().getCharacter(id)
-        call?.enqueue(object : Callback<Person> {
-            override fun onResponse(call: Call<Person>, response: Response<Person>) {
-                val data: Person? = response.body()
+    if (allegiancesData.data.value?.isEmpty() == true) {
+        ids.forEach { id ->
 
-                data?.let { allegiancesData.onDataAdd(it) }
-            }
-
-            override fun onFailure(call: Call<Person>, t: Throwable) {
-            }
-        })
+            getData(
+                RetrofitClient.instance.getGameOfThronesService().getCharacter(id),
+                allegiancesData,
+                Person()
+            )
+        }
     }
 }
 
 private fun getBooks(ids: List<Int>) {
 
-    if(booksData.books.value?.isEmpty() == true) {
+    if (booksData.data.value?.isEmpty() == true) {
         ids.forEach { id ->
-            val call = RetrofitClient.instance.getGameOfThronesService().getBooks(id)
-            call?.enqueue(object : Callback<Book> {
-                override fun onResponse(call: Call<Book>, response: Response<Book>) {
-                    val data: Book? = response.body()
 
-                    data?.let { booksData.onDataAdd(it) }
-                }
-
-                override fun onFailure(call: Call<Book>, t: Throwable) {
-                }
-            })
+            getData(
+                RetrofitClient.instance.getGameOfThronesService().getBooks(id),
+                booksData,
+                Book()
+            )
         }
     }
 }
@@ -208,12 +176,12 @@ fun CharacterScaffold(id: Int, navController: NavHostController) {
         TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
 
     getCharacter(id)
-    val person by personData.person.observeAsState(Person())
-    val books by booksData.books.observeAsState(emptyList())
-    val allegiances by allegiancesData.characters.observeAsState(emptyList())
-    val spouse by spouseData.person.observeAsState(Person())
-    val father by motherData.person.observeAsState(Person())
-    val mother by fatherData.person.observeAsState(Person())
+    val person by personData.data.observeAsState(Person())
+    val books by booksData.data.observeAsState(emptyList())
+    val allegiances by allegiancesData.data.observeAsState(emptyList())
+    val spouse by spouseData.data.observeAsState(Person())
+    val father by motherData.data.observeAsState(Person())
+    val mother by fatherData.data.observeAsState(Person())
 
     Scaffold(
         modifier = Modifier
@@ -235,7 +203,16 @@ fun CharacterScaffold(id: Int, navController: NavHostController) {
                     containerColor = MaterialTheme.colorScheme.primary
                 ),
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = {
+                        personData.clear()
+                        spouseData.clear()
+                        motherData.clear()
+                        fatherData.clear()
+                        booksData.clear()
+                        allegiancesData.clear()
+
+                        navController.popBackStack()
+                    }) {
                         Icon(
                             imageVector = Icons.Filled.ArrowBack,
                             contentDescription = "Localized description"
@@ -328,16 +305,27 @@ fun CharacterScaffold(id: Int, navController: NavHostController) {
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             rows = GridCells.Fixed(2)
                         ) {
-                            items(books.size) {
-                                Box(
-                                    modifier = Modifier
-                                        .width(150.dp)
-                                ) {
-                                    IconTile(title = books[it].name ?: "",
-                                        icon = Icons.Rounded.AccountBox,
-                                        click = {
-                                            route(navController, books[it].url)
-                                        })
+                            if (books.isNotEmpty()) {
+                                items(books.size) {
+                                    Box(
+                                        modifier = Modifier
+                                            .width(150.dp)
+                                    ) {
+                                        IconTile(title = books[it].name ?: "",
+                                            icon = Icons.Rounded.AccountBox,
+                                            click = {
+                                                route(navController, books[it].url)
+                                            })
+                                    }
+                                }
+                            } else {
+                                items(booksData.data.value?.size ?: 0) {
+                                    Box(
+                                        modifier = Modifier
+                                            .width(150.dp)
+                                    ) {
+                                        LoadingAnimation()
+                                    }
                                 }
                             }
                         }

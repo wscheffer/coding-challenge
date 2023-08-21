@@ -45,39 +45,27 @@ import za.co.retrorabbit.gameofthrones.composables.LoadingAnimation
 import za.co.retrorabbit.gameofthrones.composables.MultilineLabel
 import za.co.retrorabbit.gameofthrones.extensions.getId
 import za.co.retrorabbit.gameofthrones.models.Book
+import za.co.retrorabbit.gameofthrones.models.BookViewModel
+import za.co.retrorabbit.gameofthrones.models.CharactersViewModel
+import za.co.retrorabbit.gameofthrones.models.DataViewModel
 import za.co.retrorabbit.gameofthrones.models.Person
 import za.co.retrorabbit.gameofthrones.router.route
 import za.co.retrorabbit.gameofthrones.services.RetrofitClient
+import za.co.retrorabbit.gameofthrones.services.getData
 
-class BookViewModel : ViewModel() {
-    private val _book = MutableLiveData(Book())
-    var book: LiveData<Book> = _book
 
-    fun onDataChange(data: Book) {
-        _book.value = data
-    }
-}
-
-val bookData = BookViewModel()
-
-val charactersData = CharactersViewModel()
-val charactersPOVData = CharactersViewModel()
-
+private val bookData = BookViewModel()
+private val charactersData = CharactersViewModel()
+private val charactersPOVData = CharactersViewModel()
 
 private fun getCharacters(ids: List<Int>) {
 
     ids.forEach { id ->
-        val call = RetrofitClient.instance.getGameOfThronesService().getCharacter(id)
-        call?.enqueue(object : Callback<Person> {
-            override fun onResponse(call: Call<Person>, response: Response<Person>) {
-                val data: Person? = response.body()
-
-                data?.let { charactersData.onDataAdd(it) }
-            }
-
-            override fun onFailure(call: Call<Person>, t: Throwable) {
-            }
-        })
+        getData(
+            RetrofitClient.instance.getGameOfThronesService().getCharacter(id),
+            charactersData,
+            Person()
+        )
     }
 }
 
@@ -100,34 +88,38 @@ private fun getCharactersPOV(ids: List<Int>) {
 
 private fun getBook(id: Int) {
 
-    val call = RetrofitClient.instance.getGameOfThronesService().getBooks(id)
-    call?.enqueue(object : Callback<Book> {
-        override fun onResponse(call: Call<Book>, response: Response<Book>) {
-            val data: Book = response.body() ?: Book()
+    if (bookData.data.value?.url.isNullOrBlank()) {
+        val call = RetrofitClient.instance.getGameOfThronesService().getBooks(id)
+        call?.enqueue(object : Callback<Book> {
+            override fun onResponse(call: Call<Book>, response: Response<Book>) {
+                val data: Book = response.body() ?: Book()
 
-            bookData.onDataChange(data)
+                bookData.onDataChange(data)
 
-            if(data.characters.isNotEmpty()){
-                getCharacters(data.characters.filter { it.isNotBlank() }.mapNotNull { it.getId() })
+                if (data.characters.isNotEmpty()) {
+                    getCharacters(data.characters.filter { it.isNotBlank() }
+                        .mapNotNull { it.getId() })
 
+                }
+
+                if (data.povCharacters.isNotEmpty()) {
+                    getCharactersPOV(data.povCharacters.filter { it.isNotBlank() }
+                        .mapNotNull { it.getId() })
+                }
             }
 
-            if(data.povCharacters.isNotEmpty()){
-                getCharactersPOV(data.povCharacters.filter { it.isNotBlank() }.mapNotNull { it.getId() })
+            override fun onFailure(call: Call<Book>, t: Throwable) {
             }
-        }
-
-        override fun onFailure(call: Call<Book>, t: Throwable) {
-        }
-    })
+        })
+    }
 }
 
 @Composable
 fun BookScaffold(id: Int, navController: NavHostController) {
     getBook(id)
-    val book by bookData.book.observeAsState(Book())
-    val characters by charactersData.characters.observeAsState(emptyList())
-    val charactersPOV by charactersPOVData.characters.observeAsState(emptyList())
+    val book by bookData.data.observeAsState(Book())
+    val characters by charactersData.data.observeAsState(emptyList())
+    val charactersPOV by charactersPOVData.data.observeAsState(emptyList())
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -147,7 +139,14 @@ fun BookScaffold(id: Int, navController: NavHostController) {
                     containerColor = MaterialTheme.colorScheme.primary
                 ),
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = {
+                        bookData.clear()
+                        charactersData.clear()
+                        charactersPOVData.clear()
+
+                        navController.popBackStack()
+
+                    }) {
                         Icon(
                             imageVector = Icons.Filled.ArrowBack,
                             contentDescription = "Localized description"
@@ -176,13 +175,13 @@ fun BookScaffold(id: Int, navController: NavHostController) {
                         body = book.authors
                     )
                 }
-                item{
+                item {
                     MultilineLabel(
                         title = "ISBN",
                         body = book.isbn
                     )
                 }
-                item{
+                item {
                     MultilineLabel(
                         title = "Number of pages",
                         body = "${book.numberOfPages}"
@@ -212,23 +211,23 @@ fun BookScaffold(id: Int, navController: NavHostController) {
                         body = book.releasedFormatted
                     )
                 }
-                if (characters.isNotEmpty()) {
-                    item(span = { GridItemSpan(2) }) {
-                        Text(
-                            text = "Characters",
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 18.sp
-                        )
-                    }
-                    item(span = { GridItemSpan(2) }) {
-                        LazyHorizontalGrid(
-                            modifier = Modifier
-                                .height(220.dp)
-                                .fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(10.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            rows = GridCells.Fixed(2)
-                        ) {
+                item(span = { GridItemSpan(2) }) {
+                    Text(
+                        text = "Characters",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 18.sp
+                    )
+                }
+                item(span = { GridItemSpan(2) }) {
+                    LazyHorizontalGrid(
+                        modifier = Modifier
+                            .height(220.dp)
+                            .fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        rows = GridCells.Fixed(2)
+                    ) {
+                        if (characters.isNotEmpty()) {
                             items(characters.size) {
                                 Box(
                                     modifier = Modifier
@@ -242,26 +241,35 @@ fun BookScaffold(id: Int, navController: NavHostController) {
                                         })
                                 }
                             }
+                        } else {
+                            items(bookData.data.value?.characters?.size ?: 0) {
+                                Box(
+                                    modifier = Modifier
+                                        .width(150.dp)
+                                ) {
+                                    LoadingAnimation()
+                                }
+                            }
                         }
                     }
                 }
-                if (charactersPOV.isNotEmpty()) {
-                    item(span = { GridItemSpan(2) }) {
-                        Text(
-                            text = "POV-chapters",
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 18.sp
-                        )
-                    }
-                    item(span = { GridItemSpan(2) }) {
-                        LazyHorizontalGrid(
-                            modifier = Modifier
-                                .height(220.dp)
-                                .fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(10.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            rows = GridCells.Fixed(2)
-                        ) {
+                item(span = { GridItemSpan(2) }) {
+                    Text(
+                        text = "POV-chapters",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 18.sp
+                    )
+                }
+                item(span = { GridItemSpan(2) }) {
+                    LazyHorizontalGrid(
+                        modifier = Modifier
+                            .height(220.dp)
+                            .fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        rows = GridCells.Fixed(2)
+                    ) {
+                        if (charactersPOV.isNotEmpty()) {
                             items(charactersPOV.size) {
                                 Box(
                                     modifier = Modifier
@@ -275,9 +283,19 @@ fun BookScaffold(id: Int, navController: NavHostController) {
                                         })
                                 }
                             }
+                        } else {
+                            items(bookData.data.value?.povCharacters?.size ?: 0) {
+                                Box(
+                                    modifier = Modifier
+                                        .width(150.dp)
+                                ) {
+                                    LoadingAnimation()
+                                }
+                            }
                         }
                     }
                 }
+
             }
         }
     }

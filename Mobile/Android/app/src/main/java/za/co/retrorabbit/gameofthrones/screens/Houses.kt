@@ -39,35 +39,16 @@ import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 import za.co.retrorabbit.gameofthrones.composables.LoadingAnimation
+import za.co.retrorabbit.gameofthrones.models.DataViewModelList
 import za.co.retrorabbit.gameofthrones.models.House
 import za.co.retrorabbit.gameofthrones.router.route
 import za.co.retrorabbit.gameofthrones.services.RetrofitClient
+import za.co.retrorabbit.gameofthrones.services.getData
 
-class HousesViewModel : ViewModel() {
-    private val _houses = MutableLiveData(emptyList<House>())
-    var houses: LiveData<List<House>> = _houses
-
-    fun onHousesChange(houses: List<House>) {
-        _houses.value = houses
-    }
-}
+class HousesViewModel : DataViewModelList<House>()
 
 val housesData = HousesViewModel()
 
-private fun getHouses() {
-
-    val call = RetrofitClient.instance.getGameOfThronesService().getHouses()
-    call?.enqueue(object : Callback<List<House>> {
-        override fun onResponse(call: Call<List<House>>, response: Response<List<House>>) {
-            val houseList: List<House> = response.body() ?: emptyList()
-
-            housesData.onHousesChange(houseList)
-        }
-
-        override fun onFailure(call: Call<List<House>>, t: Throwable) {
-        }
-    })
-}
 
 @Composable
 fun HouseListScaffold(navController: NavHostController) {
@@ -82,7 +63,7 @@ fun HouseListScaffold(navController: NavHostController) {
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = "Game of Thrones Houses",
+                        text = "GoT Houses",
                         style = MaterialTheme.typography.headlineMedium
                     )
                 },
@@ -103,11 +84,14 @@ fun HousesList(
     padding: PaddingValues,
 ) {
 
-    if (housesData.houses.value?.isEmpty() != false) {
-        getHouses()
+    if (housesData.data.value?.isEmpty() != false) {
+        getData(
+            RetrofitClient.instance.getGameOfThronesService().getHouses(),
+            housesData
+        )
     }
 
-    val houses by housesData.houses.observeAsState(emptyList())
+    val houses by housesData.data.observeAsState(emptyList())
 
     if (houses.isEmpty()) {
         LoadingAnimation()
