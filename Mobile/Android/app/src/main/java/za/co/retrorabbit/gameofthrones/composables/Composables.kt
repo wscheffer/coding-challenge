@@ -22,7 +22,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -30,6 +32,7 @@ import androidx.compose.ui.platform.ClipboardManager
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -163,38 +166,6 @@ fun MultilineLabelListPreview() {
     ) {
         MultilineLabel("Title", arrayListOf("One", "Two", "Three"))
     }
-}
-
-@Composable
-fun <E> MultilineLabel(
-    title: String,
-    body: List<E>?,
-    displayValue: (E) -> String,
-    click: ((E) -> Unit)? = null
-) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.headlineSmall,
-    )
-    body?.let {
-        if (body.all { displayValue(it).isNotBlank() }) {
-            LazyRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 16.dp)
-            ) {
-                items(body.size, itemContent = { index ->
-                    ElevatedSuggestionChip(
-                        modifier = Modifier.padding(end = 8.dp),
-                        onClick = { /* Do something! */ },
-                        label = { Text(displayValue(body[index])) }
-                    )
-                })
-            }
-        } else {
-            BlankPlaceholder()
-        }
-    } ?: BlankPlaceholder()
 }
 
 @Composable

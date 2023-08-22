@@ -5,6 +5,7 @@ import retrofit2.Callback
 import retrofit2.Response
 import retrofit2.http.GET
 import retrofit2.http.Path
+import retrofit2.http.Query
 import za.co.retrorabbit.gameofthrones.models.Book
 import za.co.retrorabbit.gameofthrones.models.House
 import za.co.retrorabbit.gameofthrones.models.IDataViewModel
@@ -17,9 +18,12 @@ interface GameOfThronesService {
         var BASE_URL = "https://anapioficeandfire.com/api/"
     }
 
-    @GET("houses?pageSize=20")
-    fun getHouses(): Call<List<House>>?
-
+    @GET("houses")
+    fun getHouses(
+        @Query("page") pageIndex: Int = 1,
+        @Query("pageSize") pageSize: Int = 20,
+        @Query("name") search: String? = ""
+    ): Call<List<House>>?
 
     @GET("houses/{id}")
     fun getHouse(@Path("id") id: Int): Call<House>?

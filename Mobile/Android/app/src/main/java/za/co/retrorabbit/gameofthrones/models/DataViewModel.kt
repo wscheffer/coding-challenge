@@ -38,6 +38,10 @@ open class DataViewModelList<T> : ViewModel(), IDataViewModelList<T> {
         _data.value = _data.value?.plus(data)
     }
 
+    fun onDataAdd(data: List<T>) {
+        _data.value = _data.value?.plus(data)
+    }
+
     fun clear() {
         _data.value = emptyList()
     }
