@@ -39,21 +39,60 @@ import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 import za.co.retrorabbit.gameofthrones.composables.LoadingAnimation
-import za.co.retrorabbit.gameofthrones.models.DataViewModelList
 import za.co.retrorabbit.gameofthrones.models.House
+import za.co.retrorabbit.gameofthrones.models.HousesViewModel
 import za.co.retrorabbit.gameofthrones.router.route
 import za.co.retrorabbit.gameofthrones.services.RetrofitClient
-import za.co.retrorabbit.gameofthrones.services.getData
 
-class HousesViewModel : DataViewModelList<House>()
 
 val housesData = HousesViewModel()
+private val housesGroupedData = HousesGroupedViewModel()
 
+private class HousesGroupedViewModel : ViewModel() {
+    private val _data = MutableLiveData(mapOf<Char, List<House>>())
+    var data: LiveData<Map<Char, List<House>>> = _data
+
+    fun onDataChange(data: Map<Char, List<House>>) {
+        _data.value = data
+    }
+
+    fun clear() {
+        _data.value = emptyMap()
+    }
+}
+
+private fun getDataGrouped(endpoint: Call<List<House>>?, model: HousesGroupedViewModel) {
+
+    endpoint?.enqueue(object : Callback<List<House>> {
+        override fun onResponse(call: Call<List<House>>, response: Response<List<House>>) {
+            val data: List<House> = response.body() ?: emptyList()
+
+            housesData.onDataChange(data)
+
+            model.clear()
+            model.onDataChange(data.filterNot { it.name.isNullOrBlank() }
+                .groupBy { it.name!!.elementAt(6) }.entries.associate { it.key to it.value }
+            )
+        }
+
+        override fun onFailure(call: Call<List<House>>, t: Throwable) {
+        }
+    })
+}
 
 @Composable
 fun HouseListScaffold(navController: NavHostController) {
     val scrollBehavior =
         TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
+    val grouped by housesGroupedData.data.observeAsState(mutableMapOf())
+
+    if (housesData.data.value?.isEmpty() != false) {
+        getDataGrouped(
+            RetrofitClient.instance.getGameOfThronesService().getHouses(),
+            housesGroupedData
+        )
+    }
+
     Scaffold(
         modifier = Modifier
             .nestedScroll(scrollBehavior.nestedScrollConnection)
@@ -74,58 +113,46 @@ fun HouseListScaffold(navController: NavHostController) {
             )
         },
     ) { padding ->
-        HousesList(navController, padding)
+        HousesList(grouped, navController, padding)
     }
 }
 
 @Composable
 fun HousesList(
+    grouped: Map<Char, List<House>>,
     navController: NavController,
     padding: PaddingValues,
 ) {
-
-    if (housesData.data.value?.isEmpty() != false) {
-        getData(
-            RetrofitClient.instance.getGameOfThronesService().getHouses(),
-            housesData
-        )
-    }
-
-    val houses by housesData.data.observeAsState(emptyList())
-
-    if (houses.isEmpty()) {
+    if (grouped.isEmpty()) {
         LoadingAnimation()
     } else {
-        Column(
+        LazyColumn(
             modifier = Modifier
-                .fillMaxSize()
-//                .verticalScroll(rememberScrollState())
+                .fillMaxSize(),
+            contentPadding = padding
         ) {
-            val grouped = houses.groupBy { it.name.elementAt(6) }
-            LazyColumn(contentPadding = padding) {
-                grouped.forEach { (initial, houses) ->
-                    stickyHeader {
-                        Box(
+            grouped.forEach { (initial, houses) ->
+                stickyHeader {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFFE1E1E1)),
+                    ) {
+                        Text(
+                            "$initial",
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(Color(0xFFE1E1E1)),
-                        ) {
-                            Text(
-                                "$initial",
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(
-                                        horizontal = 16.dp,
-                                        vertical = 8.dp,
-                                    ),
-                            )
-                        }
+                                .padding(
+                                    horizontal = 16.dp,
+                                    vertical = 8.dp,
+                                ),
+                        )
                     }
+                }
 
-                    items(houses.size) { house ->
-                        HouseItem(house = houses[house]) {
-                            route(navController, houses[house].url)
-                        }
+                items(houses.size) { house ->
+                    HouseItem(house = houses[house]) {
+                        route(navController, houses[house].url)
                     }
                 }
             }
@@ -141,13 +168,13 @@ fun HouseItem(house: House, onClick: () -> Unit) {
             modifier = Modifier
                 .clickable { onClick() }, headlineText = {
                 Text(
-                    text = house.name.substring(6),
+                    text = house.name?.substring(6) ?: "",
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 18.sp
                 )
             }, supportingText = {
                 Text(
-                    text = house.region,
+                    text = house.region ?: "",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Light
                 )

@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.rounded.Face
+import androidx.compose.material3.Card
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -26,6 +27,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Modifier
@@ -33,9 +35,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
 import androidx.navigation.NavHostController
 import retrofit2.Call
 import retrofit2.Callback
@@ -47,7 +46,6 @@ import za.co.retrorabbit.gameofthrones.extensions.getId
 import za.co.retrorabbit.gameofthrones.models.Book
 import za.co.retrorabbit.gameofthrones.models.BookViewModel
 import za.co.retrorabbit.gameofthrones.models.CharactersViewModel
-import za.co.retrorabbit.gameofthrones.models.DataViewModel
 import za.co.retrorabbit.gameofthrones.models.Person
 import za.co.retrorabbit.gameofthrones.router.route
 import za.co.retrorabbit.gameofthrones.services.RetrofitClient
@@ -116,7 +114,11 @@ private fun getBook(id: Int) {
 
 @Composable
 fun BookScaffold(id: Int, navController: NavHostController) {
-    getBook(id)
+
+    LaunchedEffect(id) {
+        getBook(id)
+    }
+
     val book by bookData.data.observeAsState(Book())
     val characters by charactersData.data.observeAsState(emptyList())
     val charactersPOV by charactersPOVData.data.observeAsState(emptyList())
@@ -140,12 +142,7 @@ fun BookScaffold(id: Int, navController: NavHostController) {
                 ),
                 navigationIcon = {
                     IconButton(onClick = {
-                        bookData.clear()
-                        charactersData.clear()
-                        charactersPOVData.clear()
-
                         navController.popBackStack()
-
                     }) {
                         Icon(
                             imageVector = Icons.Filled.ArrowBack,
@@ -285,7 +282,7 @@ fun BookScaffold(id: Int, navController: NavHostController) {
                             }
                         } else {
                             items(bookData.data.value?.povCharacters?.size ?: 0) {
-                                Box(
+                                Card(
                                     modifier = Modifier
                                         .width(150.dp)
                                 ) {

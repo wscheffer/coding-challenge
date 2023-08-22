@@ -28,6 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Modifier
@@ -51,54 +52,10 @@ import za.co.retrorabbit.gameofthrones.router.route
 import za.co.retrorabbit.gameofthrones.services.RetrofitClient
 import za.co.retrorabbit.gameofthrones.services.getData
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun HouseDetailScaffold(housesData: House?, navController: NavHostController) {
-    val scrollBehavior =
-        TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
-    Scaffold(
-        modifier = Modifier
-            .nestedScroll(scrollBehavior.nestedScrollConnection)
-            .fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        modifier = Modifier.padding(horizontal = 32.dp),
-                        text = housesData?.name
-                            ?: "Game of Thrones",
-                        style = MaterialTheme.typography.headlineSmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                ),
-                navigationIcon = {
-                    IconButton(onClick = {
-                        currentLordData.clear()
-                        founderData.clear()
-                        heirData.clear()
-                        membersData.clear()
-                        navController.popBackStack()
-
-                    }) {
-                        Icon(
-                            imageVector = Icons.Filled.ArrowBack,
-                            contentDescription = "Localized description"
-                        )
-                    }
-                },
-                scrollBehavior = scrollBehavior
-            )
-        },
-    ) { padding ->
-        DetailsScreen(padding, housesData, navController)
-    }
-}
-
+private val currentLordData = CharacterViewModel()
+private val founderData = CharacterViewModel()
+private val heirData = CharacterViewModel()
+private val membersData = CharactersViewModel()
 
 private fun getMembers(ids: List<Int>) {
 
@@ -117,62 +74,95 @@ private fun getMembers(ids: List<Int>) {
     }
 }
 
-private val currentLordData = CharacterViewModel()
-private val founderData = CharacterViewModel()
-private val heirData = CharacterViewModel()
-private val membersData = CharactersViewModel()
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DetailsScreen(
-    padding: PaddingValues,
-    housesData: House?,
-    navController: NavHostController
-) {
-    val currentLord by currentLordData.data.observeAsState(Person())
-    val founder by founderData.data.observeAsState(Person())
-    val heir by heirData.data.observeAsState(Person())
-    val members by membersData.data.observeAsState(emptyList())
+fun HouseDetailScaffold(houseData: House?, navController: NavHostController) {
 
-    housesData?.let {
+    LaunchedEffect(houseData?.url) {
 
-        if (currentLordData.data.value?.url.isNullOrBlank()
-            || currentLordData.data.value?.url?.getId() != housesData.currentLord.getId()
-        ) {
+        houseData?.let {
+
             getData(
-                housesData.currentLord.getId()?.let { id ->
+                it.currentLord.getId()?.let { id ->
                     RetrofitClient.instance.getGameOfThronesService()
                         .getCharacter(id)
                 }, currentLordData, Person()
             )
-        }
 
-        if (founderData.data.value?.url.isNullOrBlank()
-            || founderData.data.value?.url?.getId() != housesData.founder.getId()
-            ) {
             getData(
-                housesData.founder.getId()?.let { id ->
+                it.founder.getId()?.let { id ->
                     RetrofitClient.instance.getGameOfThronesService()
                         .getCharacter(id)
                 }, founderData, Person()
             )
-        }
 
-        if (heirData.data.value?.url.isNullOrBlank()
-            || heirData.data.value?.url?.getId() != housesData.heir.getId()
-            ) {
             getData(
-                housesData.heir.getId()?.let { id ->
+                it.heir.getId()?.let { id ->
                     RetrofitClient.instance.getGameOfThronesService()
                         .getCharacter(id)
                 }, heirData, Person()
             )
-        }
-        if (housesData.swornMembers.isEmpty()) {
-            getMembers(housesData.swornMembers.filter { it.isNotBlank() }.mapNotNull { it.getId() })
+            if (it.swornMembers.isEmpty()) {
+                getMembers(it.swornMembers.filter { member -> member.isNotBlank() }
+                    .mapNotNull { member -> member.getId() })
+            }
         }
     }
 
+    val scrollBehavior =
+        TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
+
+    Scaffold(
+        modifier = Modifier
+            .nestedScroll(scrollBehavior.nestedScrollConnection)
+            .fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        modifier = Modifier.padding(horizontal = 32.dp),
+                        text = houseData?.name
+                            ?: "Game of Thrones",
+                        style = MaterialTheme.typography.headlineSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                ),
+                navigationIcon = {
+                    IconButton(onClick = {
+                        navController.popBackStack()
+                    }) {
+                        Icon(
+                            imageVector = Icons.Filled.ArrowBack,
+                            contentDescription = "Localized description"
+                        )
+                    }
+                },
+                scrollBehavior = scrollBehavior
+            )
+        },
+    ) { padding ->
+        DetailsScreen(houseData, padding, navController)
+    }
+}
+
+@Composable
+fun DetailsScreen(
+    housesData: House?,
+    padding: PaddingValues,
+    navController: NavHostController
+) {
     housesData?.let {
+
+        val currentLord by currentLordData.data.observeAsState(Person())
+        val founder by founderData.data.observeAsState(Person())
+        val heir by heirData.data.observeAsState(Person())
+        val members by membersData.data.observeAsState(emptyList())
+
         LazyVerticalGrid(
             modifier = Modifier
                 .padding(padding),
@@ -281,6 +271,18 @@ fun DetailsScreen(
                                 }
                             }
                         }
+                    } ?: run {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .width(150.dp)
+                            ) {
+                                IconTile(
+                                    title = "No Current Lord",
+                                    icon = Icons.Filled.Face,
+                                )
+                            }
+                        }
                     }
                     heir.url?.let { url ->
                         if (url.isNotBlank()) {
@@ -299,6 +301,18 @@ fun DetailsScreen(
                                 }
                             }
                         }
+                    } ?: run {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .width(150.dp)
+                            ) {
+                                IconTile(
+                                    title = "No Heir",
+                                    icon = Icons.Filled.Face,
+                                )
+                            }
+                        }
                     }
                     founder.url?.let { url ->
                         item {
@@ -312,6 +326,18 @@ fun DetailsScreen(
                                     click = {
                                         route(navController, url)
                                     }
+                                )
+                            }
+                        }
+                    } ?: run {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .width(150.dp)
+                            ) {
+                                IconTile(
+                                    title = "No Founder",
+                                    icon = Icons.Filled.Face,
                                 )
                             }
                         }

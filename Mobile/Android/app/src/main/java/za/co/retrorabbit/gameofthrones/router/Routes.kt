@@ -30,7 +30,7 @@ fun Router() {
             val arguments = requireNotNull(backStackEntry.arguments)
             val id = arguments.getInt("id")
             HouseDetailScaffold(
-                housesData.data.value?.find { it.url.endsWith("/${id}") },
+                housesData.data.value?.find { it.url?.endsWith("/${id}") == true },
                 navController
             )
         }

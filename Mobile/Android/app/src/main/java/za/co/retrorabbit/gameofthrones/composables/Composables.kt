@@ -8,7 +8,6 @@ package za.co.retrorabbit.gameofthrones.composables
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -46,7 +45,7 @@ fun IconTile(
 ) {
     ElevatedButton(
         modifier = Modifier
-            .height(100.dp)
+            .height(120.dp)
             .width(200.dp),
         shape = RoundedCornerShape(10.dp),
         onClick = {
@@ -59,8 +58,11 @@ fun IconTile(
                 icon,
                 contentDescription = "Localized description"
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(text = title, textAlign = TextAlign.Center)
+            Text(
+                text = title,
+                textAlign = TextAlign.Center,
+                maxLines = 3
+            )
         }
     }
 }

@@ -8,7 +8,7 @@ interface IDataViewModel<T> {
     fun onDataChange(data: T)
 }
 
-open class DataViewModel<T>(private var factory: T) : ViewModel(), IDataViewModel<T> {
+open class DataViewModel<T>(factory: T) : ViewModel(), IDataViewModel<T> {
     private val _data = MutableLiveData(factory)
     var data: LiveData<T> = _data
 
@@ -17,7 +17,7 @@ open class DataViewModel<T>(private var factory: T) : ViewModel(), IDataViewMode
     }
 
     fun clear() {
-        _data.value = factory
+        data = MutableLiveData()
     }
 }
 
@@ -43,6 +43,7 @@ open class DataViewModelList<T> : ViewModel(), IDataViewModelList<T> {
     }
 }
 
+class HousesViewModel : DataViewModelList<House>()
 class CharacterViewModel : DataViewModel<Person>(Person())
 class CharactersViewModel : DataViewModelList<Person>()
 class BookViewModel : DataViewModel<Book>(Book())

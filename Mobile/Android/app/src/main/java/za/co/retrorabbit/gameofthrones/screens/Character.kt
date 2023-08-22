@@ -1,4 +1,7 @@
-@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3Api::class)
+@file:OptIn(
+    ExperimentalMaterial3Api::class, ExperimentalMaterial3Api::class,
+    ExperimentalMaterial3Api::class
+)
 
 package za.co.retrorabbit.gameofthrones.screens
 
@@ -9,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.paddingFromBaseline
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -30,6 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Modifier
@@ -49,7 +52,8 @@ import za.co.retrorabbit.gameofthrones.extensions.getId
 import za.co.retrorabbit.gameofthrones.models.Book
 import za.co.retrorabbit.gameofthrones.models.BooksViewModel
 import za.co.retrorabbit.gameofthrones.models.CharacterViewModel
-import za.co.retrorabbit.gameofthrones.models.CharactersViewModel
+import za.co.retrorabbit.gameofthrones.models.House
+import za.co.retrorabbit.gameofthrones.models.HousesViewModel
 import za.co.retrorabbit.gameofthrones.models.Person
 import za.co.retrorabbit.gameofthrones.router.route
 import za.co.retrorabbit.gameofthrones.services.RetrofitClient
@@ -60,7 +64,7 @@ private val spouseData = CharacterViewModel()
 private val motherData = CharacterViewModel()
 private val fatherData = CharacterViewModel()
 private val booksData = BooksViewModel()
-private val allegiancesData = CharactersViewModel()
+private val allegiancesData = HousesViewModel()
 
 fun getCharacter(id: Int) {
 
@@ -86,7 +90,7 @@ fun getCharacter(id: Int) {
                     person.father?.let { getFather(it.getId()) }
                 }
 
-                if (person.allegiances.isEmpty()) {
+                if (person.allegiances.isNotEmpty()) {
                     getAllegiances(person.allegiances.mapNotNull { it.getId() })
                 }
             }
@@ -144,38 +148,42 @@ private fun getSpouse(id: Int?) {
 
 private fun getAllegiances(ids: List<Int>) {
 
-    if (allegiancesData.data.value?.isEmpty() == true) {
-        ids.forEach { id ->
+    allegiancesData.clear()
 
-            getData(
-                RetrofitClient.instance.getGameOfThronesService().getCharacter(id),
-                allegiancesData,
-                Person()
-            )
-        }
+    ids.forEach { id ->
+
+        getData(
+            RetrofitClient.instance.getGameOfThronesService().getHouse(id),
+            allegiancesData,
+            House()
+        )
     }
 }
 
 private fun getBooks(ids: List<Int>) {
 
-    if (booksData.data.value?.isEmpty() == true) {
-        ids.forEach { id ->
+    booksData.clear()
 
-            getData(
-                RetrofitClient.instance.getGameOfThronesService().getBooks(id),
-                booksData,
-                Book()
-            )
-        }
+    ids.forEach { id ->
+
+        getData(
+            RetrofitClient.instance.getGameOfThronesService().getBooks(id),
+            booksData,
+            Book()
+        )
     }
 }
 
 @Composable
 fun CharacterScaffold(id: Int, navController: NavHostController) {
+
+    LaunchedEffect(id) {
+        getCharacter(id)
+    }
+
     val scrollBehavior =
         TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
 
-    getCharacter(id)
     val person by personData.data.observeAsState(Person())
     val books by booksData.data.observeAsState(emptyList())
     val allegiances by allegiancesData.data.observeAsState(emptyList())
@@ -193,7 +201,7 @@ fun CharacterScaffold(id: Int, navController: NavHostController) {
                 title = {
                     Text(
                         modifier = Modifier.padding(horizontal = 32.dp),
-                        text = "${person.name} (${person.url?.getId()})",
+                        text = "${person.name}",
                         style = MaterialTheme.typography.headlineSmall,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -204,13 +212,6 @@ fun CharacterScaffold(id: Int, navController: NavHostController) {
                 ),
                 navigationIcon = {
                     IconButton(onClick = {
-                        personData.clear()
-                        spouseData.clear()
-                        motherData.clear()
-                        fatherData.clear()
-                        booksData.clear()
-                        allegiancesData.clear()
-
                         navController.popBackStack()
                     }) {
                         Icon(
@@ -279,12 +280,29 @@ fun CharacterScaffold(id: Int, navController: NavHostController) {
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 18.sp,
                             modifier = Modifier
-                                .paddingFromBaseline(top = 40.dp, bottom = 8.dp)
-                                .padding(horizontal = 16.dp)
                         )
                     }
-                    items(allegiances.size) {
-                        IconTile(title = allegiances[it].name ?: "", icon = Icons.Rounded.Create)
+                    item(span = { GridItemSpan(2) }) {
+                        LazyHorizontalGrid(
+                            modifier = Modifier
+                                .height(120.dp)
+                                .fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            rows = GridCells.Fixed(1)
+                        ) {
+                            items(allegiances.size) {
+                                Box(
+                                    modifier = Modifier
+                                        .width(150.dp)
+                                ) {
+                                    IconTile(
+                                        title = allegiances[it].name ?: "",
+                                        icon = Icons.Rounded.Create
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
                 if (books.isNotEmpty()) {
@@ -354,6 +372,18 @@ fun CharacterScaffold(id: Int, navController: NavHostController) {
                             }
                         }
                     }
+                } else {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .width(150.dp)
+                        ) {
+                            IconTile(
+                                title = "No Spouse",
+                                icon = Icons.Filled.Face,
+                            )
+                        }
+                    }
                 }
                 if (!father.url.isNullOrBlank()) {
                     item {
@@ -367,6 +397,18 @@ fun CharacterScaffold(id: Int, navController: NavHostController) {
                             )
                         }
                     }
+                } else {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .width(150.dp)
+                        ) {
+                            IconTile(
+                                title = "No Father",
+                                icon = Icons.Filled.Face,
+                            )
+                        }
+                    }
                 }
                 if (!mother.url.isNullOrBlank()) {
                     item {
@@ -377,6 +419,18 @@ fun CharacterScaffold(id: Int, navController: NavHostController) {
                                 click = {
                                     route(navController, mother.url)
                                 }
+                            )
+                        }
+                    }
+                } else {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .width(150.dp)
+                        ) {
+                            IconTile(
+                                title = "No Mother",
+                                icon = Icons.Filled.Face,
                             )
                         }
                     }
