@@ -63,7 +63,6 @@ fun Router() {
 
 const val RouteHome = "home"
 
-
 fun route(navController: NavController, url: String?) {
     val parts = url?.split("/")
 

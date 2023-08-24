@@ -29,6 +29,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -58,7 +59,7 @@ private val housesGroupedData = HousesGroupedViewModel()
 
 private class HousesGroupedViewModel : ViewModel() {
     private val _data = MutableLiveData(mapOf<Char, List<House>>())
-    var data: LiveData<Map<Char, List<House>>> = _data
+    val data: LiveData<Map<Char, List<House>>> = _data
 
     fun onDataChange(data: Map<Char, List<House>>) {
         _data.value = data
@@ -147,7 +148,7 @@ fun HousesList(
     padding: PaddingValues,
 ) {
     var page by remember {
-        mutableStateOf(1)
+        mutableIntStateOf(1)
     }
 
     val scrollState = rememberLazyListState()
@@ -183,7 +184,7 @@ fun HousesList(
         contentPadding = padding,
         state = scrollState
     ) {
-        grouped.map { (initial, houses) ->
+        grouped.forEach { (initial, houses) ->
             stickyHeader {
                 Box(
                     modifier = Modifier
