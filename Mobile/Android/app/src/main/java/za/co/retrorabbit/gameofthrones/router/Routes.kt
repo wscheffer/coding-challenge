@@ -10,7 +10,7 @@ import androidx.navigation.navArgument
 import za.co.retrorabbit.gameofthrones.screens.BookScaffold
 import za.co.retrorabbit.gameofthrones.screens.CharacterScaffold
 import za.co.retrorabbit.gameofthrones.screens.HouseDetailScaffold
-import za.co.retrorabbit.gameofthrones.screens.HouseListScaffold
+import za.co.retrorabbit.gameofthrones.screens.HousesListScaffold
 import za.co.retrorabbit.gameofthrones.screens.housesData
 
 @Composable
@@ -19,7 +19,7 @@ fun Router() {
 
     NavHost(navController, startDestination = RouteHome) {
         composable(RouteHome) {
-            HouseListScaffold(navController)
+            HousesListScaffold(navController)
         }
         composable(
             routeHouseDetails(),
