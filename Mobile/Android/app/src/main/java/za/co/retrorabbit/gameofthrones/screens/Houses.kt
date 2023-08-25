@@ -38,11 +38,13 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
+import dagger.hilt.android.lifecycle.HiltViewModel
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -51,14 +53,14 @@ import za.co.retrorabbit.gameofthrones.models.House
 import za.co.retrorabbit.gameofthrones.models.HousesViewModel
 import za.co.retrorabbit.gameofthrones.router.route
 import za.co.retrorabbit.gameofthrones.services.RetrofitClient
-
+import javax.inject.Inject
 
 val housesData = HousesViewModel()
-private val housesGroupedData = HousesGroupedViewModel()
 
-private class HousesGroupedViewModel : ViewModel() {
+@HiltViewModel
+class HousesGroupedViewModel @Inject constructor(): ViewModel() {
     private val _data = MutableLiveData(mapOf<Char, List<House>>())
-    var data: LiveData<Map<Char, List<House>>> = _data
+    val data: LiveData<Map<Char, List<House>>> = _data
 
     fun onDataChange(data: Map<Char, List<House>>) {
         _data.value = data
@@ -108,10 +110,9 @@ private fun getHouseDataGrouped(
 }
 
 @Composable
-fun HouseListScaffold(navController: NavHostController) {
+fun HousesListScaffold(navController: NavHostController) {
     val scrollBehavior =
         TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
-    val grouped by housesGroupedData.data.observeAsState(mutableMapOf())
 
     Scaffold(
         modifier = Modifier
@@ -133,7 +134,7 @@ fun HouseListScaffold(navController: NavHostController) {
             )
         },
     ) { padding ->
-        HousesList(grouped, navController, padding)
+        HousesList(navController, padding)
     }
 }
 
@@ -142,10 +143,12 @@ fun LazyListState.isScrolledToEnd() =
 
 @Composable
 fun HousesList(
-    grouped: Map<Char, List<House>>,
     navController: NavController,
     padding: PaddingValues,
 ) {
+    val viewModel = hiltViewModel<HousesGroupedViewModel>()
+    val grouped by viewModel.data.observeAsState(mutableMapOf())
+
     var page by remember {
         mutableStateOf(1)
     }
@@ -162,7 +165,7 @@ fun HousesList(
     LaunchedEffect(page) {
         getHouseDataGrouped(
             page,
-            housesGroupedData
+            viewModel
         )
     }
 
@@ -183,7 +186,7 @@ fun HousesList(
         contentPadding = padding,
         state = scrollState
     ) {
-        grouped.map { (initial, houses) ->
+        grouped.forEach { (initial, houses) ->
             stickyHeader {
                 Box(
                     modifier = Modifier

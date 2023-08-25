@@ -24,7 +24,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 
-
 @Composable
 fun LoadingAnimation(
     circleColor: Color = MaterialTheme.colorScheme.primary,
@@ -76,7 +75,7 @@ fun LoadingAnimation(
                 .background(color = Color.Transparent)
         ) {
             // animating circles
-            circles.forEachIndexed { index, animatable ->
+            circles.forEach { animatable ->
                 Box(
                     modifier = Modifier
                         .scale(scale = animatable.value)
