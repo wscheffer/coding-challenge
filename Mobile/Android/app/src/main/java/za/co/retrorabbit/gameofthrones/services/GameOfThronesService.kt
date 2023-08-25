@@ -51,13 +51,22 @@ fun <T> getData(endpoint: Call<T>?, model: IDataViewModel<T>, factory: T) {
     }
 }
 
-fun <T> getData(endpoint: Call<T>?, model: IDataViewModelList<T>, factory: T) {
+fun <T> getData(
+    endpoint: Call<T>?,
+    model: IDataViewModelList<T>,
+    factory: T,
+    callback: (() -> Unit)? = null
+) {
 
     endpoint?.enqueue(object : Callback<T> {
         override fun onResponse(call: Call<T>, response: Response<T>) {
             val data: T = response.body() ?: factory
 
             model.onDataAdd(data)
+
+            if (callback != null) {
+                callback()
+            }
         }
 
         override fun onFailure(call: Call<T>, t: Throwable) {

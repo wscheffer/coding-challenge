@@ -27,6 +27,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
@@ -39,10 +40,15 @@ import androidx.navigation.NavHostController
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import za.co.retrorabbit.gameofthrones.composables.GRID_HEIGHT
+import za.co.retrorabbit.gameofthrones.composables.GRID_SPACING
 import za.co.retrorabbit.gameofthrones.composables.IconTile
 import za.co.retrorabbit.gameofthrones.composables.LoadingAnimation
 import za.co.retrorabbit.gameofthrones.composables.MultilineLabel
+import za.co.retrorabbit.gameofthrones.composables.SCAFFOLD_PADDING
+import za.co.retrorabbit.gameofthrones.composables.gridCellWidth
 import za.co.retrorabbit.gameofthrones.extensions.getId
+import za.co.retrorabbit.gameofthrones.extensions.ifNullOrBank
 import za.co.retrorabbit.gameofthrones.models.Book
 import za.co.retrorabbit.gameofthrones.models.BookViewModel
 import za.co.retrorabbit.gameofthrones.models.CharactersViewModel
@@ -56,72 +62,83 @@ private val bookData = BookViewModel()
 private val charactersData = CharactersViewModel()
 private val charactersPOVData = CharactersViewModel()
 
+private val activeCalls = mutableMapOf<Int, Call<Person>>()
+private val activePOVCalls = mutableMapOf<Int, Call<Person>>()
+
 private fun getCharacters(ids: List<Int>) {
 
     ids.forEach { id ->
         getData(
-            RetrofitClient.instance.getGameOfThronesService().getCharacter(id),
+            RetrofitClient.instance.getGameOfThronesService().getCharacter(id)?.also {
+                activeCalls[id] = it;
+            },
             charactersData,
             Person()
-        )
+        ) {
+            activeCalls.remove(id)
+        }
     }
 }
 
 private fun getCharactersPOV(ids: List<Int>) {
 
     ids.forEach { id ->
-        val call = RetrofitClient.instance.getGameOfThronesService().getCharacter(id)
-        call?.enqueue(object : Callback<Person> {
-            override fun onResponse(call: Call<Person>, response: Response<Person>) {
-                val data: Person? = response.body()
-
-                data?.let { charactersPOVData.onDataAdd(it) }
-            }
-
-            override fun onFailure(call: Call<Person>, t: Throwable) {
-            }
-        })
+        getData(
+            RetrofitClient.instance.getGameOfThronesService().getCharacter(id)?.also {
+                activePOVCalls[id] = it;
+            },
+            charactersPOVData,
+            Person()
+        ) {
+            activePOVCalls.remove(id)
+        }
     }
 }
 
 private fun getBook(id: Int) {
 
-    if (bookData.data.value?.url.isNullOrBlank()) {
-        val call = RetrofitClient.instance.getGameOfThronesService().getBooks(id)
-        call?.enqueue(object : Callback<Book> {
-            override fun onResponse(call: Call<Book>, response: Response<Book>) {
-                val data: Book = response.body() ?: Book()
+    val call = RetrofitClient.instance.getGameOfThronesService().getBooks(id)
+    call?.enqueue(object : Callback<Book> {
+        override fun onResponse(call: Call<Book>, response: Response<Book>) {
+            val data: Book = response.body() ?: Book()
 
-                bookData.onDataChange(data)
+            bookData.onDataChange(data)
 
-                if (data.characters.isNotEmpty()) {
-                    getCharacters(data.characters.filter { it.isNotBlank() }
-                        .mapNotNull { it.getId() })
+//            if (data.characters.isNotEmpty()) {
+                getCharacters(data.characters.filter { it.isNotBlank() }
+                    .mapNotNull { it.getId() })
 
-                }
+//            }
 
-                if (data.povCharacters.isNotEmpty()) {
-                    getCharactersPOV(data.povCharacters.filter { it.isNotBlank() }
-                        .mapNotNull { it.getId() })
-                }
-            }
+//            if (data.povCharacters.isNotEmpty()) {
+                getCharactersPOV(data.povCharacters.filter { it.isNotBlank() }
+                    .mapNotNull { it.getId() })
+//            }
+        }
 
-            override fun onFailure(call: Call<Book>, t: Throwable) {
-            }
-        })
-    }
+        override fun onFailure(call: Call<Book>, t: Throwable) {
+        }
+    })
 }
 
 @Composable
 fun BookScaffold(id: Int, navController: NavHostController) {
 
+    val book by bookData.data.observeAsState(Book())
+    val characters by charactersData.data.observeAsState(emptyList())
+    val charactersPOV by charactersPOVData.data.observeAsState(emptyList())
+
     LaunchedEffect(id) {
         getBook(id)
     }
 
-    val book by bookData.data.observeAsState(Book())
-    val characters by charactersData.data.observeAsState(emptyList())
-    val charactersPOV by charactersPOVData.data.observeAsState(emptyList())
+    DisposableEffect(bookData) {
+        onDispose {
+            activeCalls.forEach {
+                it.value.cancel()
+            }
+        }
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -130,8 +147,8 @@ fun BookScaffold(id: Int, navController: NavHostController) {
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        modifier = Modifier.padding(horizontal = 32.dp),
-                        text = book.name ?: "No name",
+                        modifier = Modifier.padding(horizontal = SCAFFOLD_PADDING),
+                        text = book.name ?: "Loading ...",
                         style = MaterialTheme.typography.headlineSmall,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -162,8 +179,8 @@ fun BookScaffold(id: Int, navController: NavHostController) {
                     .padding(padding)
                     .fillMaxSize(),
                 contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(GRID_SPACING),
+                horizontalArrangement = Arrangement.spacedBy(GRID_SPACING),
                 columns = GridCells.Fixed(2)
             ) {
                 item(span = { GridItemSpan(2) }) {
@@ -218,20 +235,20 @@ fun BookScaffold(id: Int, navController: NavHostController) {
                 item(span = { GridItemSpan(2) }) {
                     LazyHorizontalGrid(
                         modifier = Modifier
-                            .height(220.dp)
+                            .height(GRID_HEIGHT)
                             .fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        rows = GridCells.Fixed(2)
+                        verticalArrangement = Arrangement.spacedBy(GRID_SPACING),
+                        horizontalArrangement = Arrangement.spacedBy(GRID_SPACING),
+                        rows = GridCells.Fixed(1)
                     ) {
                         if (characters.isNotEmpty()) {
-                            items(characters.size) {
+                            items(characters.takeLast(10).size) {
                                 Box(
                                     modifier = Modifier
-                                        .width(150.dp)
+                                        .width(gridCellWidth())
                                 ) {
                                     IconTile(
-                                        title = characters[it].name ?: "",
+                                        title = characters[it].name.ifNullOrBank { "No Name" },
                                         icon = Icons.Rounded.Face,
                                         click = {
                                             route(navController, characters[it].url)
@@ -240,9 +257,9 @@ fun BookScaffold(id: Int, navController: NavHostController) {
                             }
                         } else {
                             items(bookData.data.value?.characters?.size ?: 0) {
-                                Box(
+                                Card(
                                     modifier = Modifier
-                                        .width(150.dp)
+                                        .width(gridCellWidth())
                                 ) {
                                     LoadingAnimation()
                                 }
@@ -260,17 +277,17 @@ fun BookScaffold(id: Int, navController: NavHostController) {
                 item(span = { GridItemSpan(2) }) {
                     LazyHorizontalGrid(
                         modifier = Modifier
-                            .height(220.dp)
+                            .height(GRID_HEIGHT)
                             .fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        rows = GridCells.Fixed(2)
+                        verticalArrangement = Arrangement.spacedBy(GRID_SPACING),
+                        horizontalArrangement = Arrangement.spacedBy(GRID_SPACING),
+                        rows = GridCells.Fixed(1)
                     ) {
                         if (charactersPOV.isNotEmpty()) {
                             items(charactersPOV.size) {
                                 Box(
                                     modifier = Modifier
-                                        .width(150.dp)
+                                        .width(gridCellWidth())
                                 ) {
                                     IconTile(
                                         title = charactersPOV[it].name ?: "",
@@ -284,7 +301,7 @@ fun BookScaffold(id: Int, navController: NavHostController) {
                             items(bookData.data.value?.povCharacters?.size ?: 0) {
                                 Card(
                                     modifier = Modifier
-                                        .width(150.dp)
+                                        .width(gridCellWidth())
                                 ) {
                                     LoadingAnimation()
                                 }

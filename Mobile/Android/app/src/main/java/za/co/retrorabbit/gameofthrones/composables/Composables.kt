@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.ClipboardManager
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
@@ -39,6 +40,18 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+
+private const val INT_GRID_HEIGHT = 120
+private const val INT_GRID_SPACING = 10
+private const val INT_SCAFFOLD_PADDING = 32
+
+val GRID_HEIGHT = INT_GRID_HEIGHT.dp
+val GRID_SPACING = INT_GRID_SPACING.dp
+val SCAFFOLD_PADDING = INT_SCAFFOLD_PADDING.dp
+
+@Composable
+fun gridCellWidth() =
+    (LocalConfiguration.current.screenWidthDp.dp / 2) - (INT_GRID_SPACING * 2).dp
 
 @Composable
 fun IconTile(

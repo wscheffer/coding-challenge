@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.rounded.AccountBox
 import androidx.compose.material.icons.rounded.Create
+import androidx.compose.material3.Card
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -37,6 +38,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -45,9 +47,13 @@ import androidx.navigation.NavHostController
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import za.co.retrorabbit.gameofthrones.composables.GRID_HEIGHT
+import za.co.retrorabbit.gameofthrones.composables.GRID_SPACING
 import za.co.retrorabbit.gameofthrones.composables.IconTile
 import za.co.retrorabbit.gameofthrones.composables.LoadingAnimation
 import za.co.retrorabbit.gameofthrones.composables.MultilineLabel
+import za.co.retrorabbit.gameofthrones.composables.SCAFFOLD_PADDING
+import za.co.retrorabbit.gameofthrones.composables.gridCellWidth
 import za.co.retrorabbit.gameofthrones.extensions.getId
 import za.co.retrorabbit.gameofthrones.models.Book
 import za.co.retrorabbit.gameofthrones.models.BooksViewModel
@@ -68,37 +74,35 @@ private val allegiancesData = HousesViewModel()
 
 fun getCharacter(id: Int) {
 
-    if (personData.data.value?.url.isNullOrBlank()) {
-        val call = RetrofitClient.instance.getGameOfThronesService().getCharacter(id)
-        call?.enqueue(object : Callback<Person> {
-            override fun onResponse(call: Call<Person>, response: Response<Person>) {
-                val person: Person = response.body() ?: Person()
+    val call = RetrofitClient.instance.getGameOfThronesService().getCharacter(id)
+    call?.enqueue(object : Callback<Person> {
+        override fun onResponse(call: Call<Person>, response: Response<Person>) {
+            val person: Person = response.body() ?: Person()
 
-                personData.onDataChange(person)
+            personData.onDataChange(person)
 
-                getBooks(person.books.mapNotNull { it.getId() })
+            getBooks(person.books.mapNotNull { it.getId() })
 
-                if (!person.spouse.isNullOrBlank()) {
-                    person.spouse?.let { getSpouse(it.getId()) }
-                }
-
-                if (!person.mother.isNullOrBlank()) {
-                    person.mother?.let { getMother(it.getId()) }
-                }
-
-                if (!person.father.isNullOrBlank()) {
-                    person.father?.let { getFather(it.getId()) }
-                }
-
-                if (person.allegiances.isNotEmpty()) {
-                    getAllegiances(person.allegiances.mapNotNull { it.getId() })
-                }
+            if (!person.spouse.isNullOrBlank()) {
+                person.spouse?.let { getSpouse(it.getId()) }
             }
 
-            override fun onFailure(call: Call<Person>, t: Throwable) {
+            if (!person.mother.isNullOrBlank()) {
+                person.mother?.let { getMother(it.getId()) }
             }
-        })
-    }
+
+            if (!person.father.isNullOrBlank()) {
+                person.father?.let { getFather(it.getId()) }
+            }
+
+            if (person.allegiances.isNotEmpty()) {
+                getAllegiances(person.allegiances.mapNotNull { it.getId() })
+            }
+        }
+
+        override fun onFailure(call: Call<Person>, t: Throwable) {
+        }
+    })
 }
 
 private fun getMother(id: Int?) {
@@ -177,6 +181,7 @@ private fun getBooks(ids: List<Int>) {
 @Composable
 fun CharacterScaffold(id: Int, navController: NavHostController) {
 
+
     LaunchedEffect(id) {
         getCharacter(id)
     }
@@ -200,8 +205,8 @@ fun CharacterScaffold(id: Int, navController: NavHostController) {
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        modifier = Modifier.padding(horizontal = 32.dp),
-                        text = "${person.name}",
+                        modifier = Modifier.padding(horizontal = SCAFFOLD_PADDING),
+                        text = person.name ?: "",
                         style = MaterialTheme.typography.headlineSmall,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -233,8 +238,8 @@ fun CharacterScaffold(id: Int, navController: NavHostController) {
                     .padding(padding)
                     .fillMaxSize(),
                 contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(GRID_SPACING),
+                horizontalArrangement = Arrangement.spacedBy(GRID_SPACING),
                 columns = GridCells.Fixed(2)
             ) {
                 item(span = { GridItemSpan(2) }) {
@@ -273,28 +278,29 @@ fun CharacterScaffold(id: Int, navController: NavHostController) {
                         body = person.died
                     )
                 }
-                if (allegiances.isNotEmpty()) {
-                    item(span = { GridItemSpan(2) }) {
-                        Text(
-                            text = "Allegiances",
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 18.sp,
-                            modifier = Modifier
-                        )
-                    }
-                    item(span = { GridItemSpan(2) }) {
-                        LazyHorizontalGrid(
-                            modifier = Modifier
-                                .height(120.dp)
-                                .fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(10.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            rows = GridCells.Fixed(1)
-                        ) {
+                item(span = { GridItemSpan(2) }) {
+                    Text(
+                        text = "Allegiances",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 18.sp,
+                        modifier = Modifier
+                    )
+                }
+
+                item(span = { GridItemSpan(2) }) {
+                    LazyHorizontalGrid(
+                        modifier = Modifier
+                            .height(GRID_HEIGHT)
+                            .fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(GRID_SPACING),
+                        horizontalArrangement = Arrangement.spacedBy(GRID_SPACING),
+                        rows = GridCells.Fixed(1)
+                    ) {
+                        if (allegiances.isNotEmpty()) {
                             items(allegiances.size) {
                                 Box(
                                     modifier = Modifier
-                                        .width(150.dp)
+                                        .width(gridCellWidth())
                                 ) {
                                     IconTile(
                                         title = allegiances[it].name ?: "",
@@ -302,48 +308,72 @@ fun CharacterScaffold(id: Int, navController: NavHostController) {
                                     )
                                 }
                             }
+                        } else {
+                            item {
+                                Card(
+                                    modifier = Modifier
+                                        .height(GRID_HEIGHT)
+                                        .width(gridCellWidth())
+                                ) {
+                                    IconTile(
+                                        title = "No allegiances",
+                                        icon = Icons.Filled.Face,
+                                    )
+                                }
+                            }
                         }
                     }
                 }
-                if (books.isNotEmpty()) {
-
-                    item(span = { GridItemSpan(2) }) {
-                        Text(
-                            text = "Books",
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 18.sp,
-                        )
-                    }
-                    item(span = { GridItemSpan(2) }) {
-                        LazyHorizontalGrid(
-                            modifier = Modifier
-                                .height(220.dp)
-                                .fillMaxWidth(),
-                            verticalArrangement = Arrangement.spacedBy(10.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            rows = GridCells.Fixed(2)
-                        ) {
-                            if (books.isNotEmpty()) {
-                                items(books.size) {
-                                    Box(
-                                        modifier = Modifier
-                                            .width(150.dp)
-                                    ) {
-                                        IconTile(title = books[it].name ?: "",
-                                            icon = Icons.Rounded.AccountBox,
-                                            click = {
-                                                route(navController, books[it].url)
-                                            })
-                                    }
+                item(span = { GridItemSpan(2) }) {
+                    Text(
+                        text = "Books",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 18.sp,
+                    )
+                }
+                item(span = { GridItemSpan(2) }) {
+                    LazyHorizontalGrid(
+                        modifier = Modifier
+                            .height(GRID_HEIGHT)
+                            .fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(GRID_SPACING),
+                        horizontalArrangement = Arrangement.spacedBy(GRID_SPACING),
+                        rows = GridCells.Fixed(1)
+                    ) {
+                        if (books.isNotEmpty()) {
+                            items(books.size) {
+                                Box(
+                                    modifier = Modifier
+                                        .width(gridCellWidth())
+                                ) {
+                                    IconTile(title = books[it].name ?: "",
+                                        icon = Icons.Rounded.AccountBox,
+                                        click = {
+                                            route(navController, books[it].url)
+                                        })
                                 }
-                            } else {
-                                items(booksData.data.value?.size ?: 0) {
-                                    Box(
-                                        modifier = Modifier
-                                            .width(150.dp)
-                                    ) {
-                                        LoadingAnimation()
-                                    }
+                            }
+                        } else if ((booksData.data.value?.size ?: 0) > 0) {
+                            items(booksData.data.value?.size ?: 0) {
+                                Box(
+                                    modifier = Modifier
+                                        .height(GRID_HEIGHT)
+                                        .width(gridCellWidth())
+                                ) {
+                                    LoadingAnimation()
+                                }
+                            }
+                        } else {
+                            item {
+                                Card(
+                                    modifier = Modifier
+                                        .height(GRID_HEIGHT)
+                                        .width(gridCellWidth())
+                                ) {
+                                    IconTile(
+                                        title = "No books",
+                                        icon = Icons.Filled.Face,
+                                    )
                                 }
                             }
                         }
@@ -356,82 +386,94 @@ fun CharacterScaffold(id: Int, navController: NavHostController) {
                         fontSize = 18.sp
                     )
                 }
-                if (!spouse.url.isNullOrBlank()) {
-                    spouse.url?.let { url ->
-                        if (url.isNotBlank()) {
-                            item {
-                                Box {
-                                    IconTile(
-                                        title = "Spouse\n(${spouse.name})",
-                                        icon = Icons.Filled.Face,
-                                        click = {
-                                            route(navController, url)
+                item(span = { GridItemSpan(2) }) {
+                    LazyHorizontalGrid(
+                        modifier = Modifier
+                            .height(GRID_HEIGHT)
+                            .fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(GRID_SPACING),
+                        horizontalArrangement = Arrangement.spacedBy(GRID_SPACING),
+                        rows = GridCells.Fixed(1)
+                    )
+                    {
+                        if (!spouse.url.isNullOrBlank()) {
+                            spouse.url?.let { url ->
+                                if (url.isNotBlank()) {
+                                    item {
+                                        Box {
+                                            IconTile(
+                                                title = "Spouse\n(${spouse.name})",
+                                                icon = Icons.Filled.Face,
+                                                click = {
+                                                    route(navController, url)
+                                                }
+                                            )
                                         }
+                                    }
+                                }
+                            }
+                        } else {
+                            item {
+                                Card(
+                                    modifier = Modifier
+                                        .width(gridCellWidth())
+                                ) {
+                                    IconTile(
+                                        title = "No Spouse",
+                                        icon = Icons.Filled.Face,
                                     )
                                 }
                             }
                         }
-                    }
-                } else {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .width(150.dp)
-                        ) {
-                            IconTile(
-                                title = "No Spouse",
-                                icon = Icons.Filled.Face,
-                            )
-                        }
-                    }
-                }
-                if (!father.url.isNullOrBlank()) {
-                    item {
-                        Box {
-                            IconTile(
-                                title = "Father\n(${father.name})",
-                                icon = Icons.Filled.Face,
-                                click = {
-                                    route(navController, father.url)
+                        if (!father.url.isNullOrBlank()) {
+                            item {
+                                Box {
+                                    IconTile(
+                                        title = "Father\n(${father.name})",
+                                        icon = Icons.Filled.Face,
+                                        click = {
+                                            route(navController, father.url)
+                                        }
+                                    )
                                 }
-                            )
-                        }
-                    }
-                } else {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .width(150.dp)
-                        ) {
-                            IconTile(
-                                title = "No Father",
-                                icon = Icons.Filled.Face,
-                            )
-                        }
-                    }
-                }
-                if (!mother.url.isNullOrBlank()) {
-                    item {
-                        Box {
-                            IconTile(
-                                title = "Mother\n(${mother.name})",
-                                icon = Icons.Filled.Face,
-                                click = {
-                                    route(navController, mother.url)
+                            }
+                        } else {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .width(gridCellWidth())
+                                ) {
+                                    IconTile(
+                                        title = "No Father",
+                                        icon = Icons.Filled.Face,
+                                    )
                                 }
-                            )
+                            }
                         }
-                    }
-                } else {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .width(150.dp)
-                        ) {
-                            IconTile(
-                                title = "No Mother",
-                                icon = Icons.Filled.Face,
-                            )
+                        if (!mother.url.isNullOrBlank()) {
+                            item {
+                                Box {
+                                    IconTile(
+                                        title = "Mother\n(${mother.name})",
+                                        icon = Icons.Filled.Face,
+                                        click = {
+                                            route(navController, mother.url)
+                                        }
+                                    )
+                                }
+                            }
+                        } else {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .width(gridCellWidth())
+                                ) {
+                                    IconTile(
+                                        title = "No Mother",
+                                        icon = Icons.Filled.Face,
+                                    )
+                                }
+                            }
                         }
                     }
                 }

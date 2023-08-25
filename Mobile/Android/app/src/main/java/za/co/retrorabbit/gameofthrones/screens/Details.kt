@@ -41,8 +41,12 @@ import androidx.navigation.NavHostController
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import za.co.retrorabbit.gameofthrones.composables.GRID_HEIGHT
+import za.co.retrorabbit.gameofthrones.composables.GRID_SPACING
 import za.co.retrorabbit.gameofthrones.composables.IconTile
 import za.co.retrorabbit.gameofthrones.composables.MultilineLabel
+import za.co.retrorabbit.gameofthrones.composables.SCAFFOLD_PADDING
+import za.co.retrorabbit.gameofthrones.composables.gridCellWidth
 import za.co.retrorabbit.gameofthrones.extensions.getId
 import za.co.retrorabbit.gameofthrones.models.CharacterViewModel
 import za.co.retrorabbit.gameofthrones.models.CharactersViewModel
@@ -121,7 +125,7 @@ fun HouseDetailScaffold(houseData: House?, navController: NavHostController) {
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        modifier = Modifier.padding(horizontal = 32.dp),
+                        modifier = Modifier.padding(horizontal = SCAFFOLD_PADDING),
                         text = houseData?.name
                             ?: "Game of Thrones",
                         style = MaterialTheme.typography.headlineSmall,
@@ -167,8 +171,8 @@ fun DetailsScreen(
             modifier = Modifier
                 .padding(padding),
             contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(GRID_SPACING),
+            horizontalArrangement = Arrangement.spacedBy(GRID_SPACING),
             columns = GridCells.Fixed(2)
         ) {
             item(span = { GridItemSpan(2) }) {
@@ -216,16 +220,16 @@ fun DetailsScreen(
                 item(span = { GridItemSpan(2) }) {
                     LazyHorizontalGrid(
                         modifier = Modifier
-                            .height(220.dp)
+                            .height(GRID_HEIGHT*2)
                             .fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(GRID_SPACING),
+                        horizontalArrangement = Arrangement.spacedBy(GRID_SPACING),
                         rows = GridCells.Fixed(2)
                     ) {
                         items(members.size) {
                             Box(
                                 modifier = Modifier
-                                    .width(150.dp)
+                                    .width(gridCellWidth())
                             ) {
                                 IconTile(
                                     title = members[it].name ?: "",
@@ -248,10 +252,10 @@ fun DetailsScreen(
             item(span = { GridItemSpan(2) }) {
                 LazyHorizontalGrid(
                     modifier = Modifier
-                        .height(120.dp)
+                        .height(GRID_HEIGHT)
                         .fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(GRID_SPACING),
+                    horizontalArrangement = Arrangement.spacedBy(GRID_SPACING),
                     rows = GridCells.Fixed(1)
                 ) {
                     currentLord.url?.let { url ->
@@ -259,7 +263,8 @@ fun DetailsScreen(
                             item {
                                 Box(
                                     modifier = Modifier
-                                        .width(150.dp)
+                                        .height(GRID_HEIGHT)
+                                        .width(gridCellWidth())
                                 ) {
                                     IconTile(
                                         title = "Current Lord\n(${currentLord.name})",
@@ -275,7 +280,8 @@ fun DetailsScreen(
                         item {
                             Box(
                                 modifier = Modifier
-                                    .width(150.dp)
+                                    .height(GRID_HEIGHT)
+                                    .width(gridCellWidth())
                             ) {
                                 IconTile(
                                     title = "No Current Lord",
@@ -289,7 +295,8 @@ fun DetailsScreen(
                             item {
                                 Box(
                                     modifier = Modifier
-                                        .width(150.dp)
+                                        .height(GRID_HEIGHT)
+                                        .width(gridCellWidth())
                                 ) {
                                     IconTile(
                                         title = "Heir\n(${heir.name})",
@@ -305,7 +312,8 @@ fun DetailsScreen(
                         item {
                             Box(
                                 modifier = Modifier
-                                    .width(150.dp)
+                                    .height(GRID_HEIGHT)
+                                    .width(gridCellWidth())
                             ) {
                                 IconTile(
                                     title = "No Heir",
@@ -318,7 +326,8 @@ fun DetailsScreen(
                         item {
                             Box(
                                 modifier = Modifier
-                                    .width(150.dp)
+                                    .height(GRID_HEIGHT)
+                                    .width(gridCellWidth())
                             ) {
                                 IconTile(
                                     title = "Founder\n(${founder.name})",
@@ -333,7 +342,8 @@ fun DetailsScreen(
                         item {
                             Box(
                                 modifier = Modifier
-                                    .width(150.dp)
+                                    .height(GRID_HEIGHT)
+                                    .width(gridCellWidth())
                             ) {
                                 IconTile(
                                     title = "No Founder",
